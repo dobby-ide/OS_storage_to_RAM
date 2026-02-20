@@ -14,25 +14,34 @@ public class Main {
 
         Disk disk = new Disk(20, prefilledFiles);
 
+
         List<Integer> newFileBlocks = disk.allocateBlocks(4);
         System.out.println("Allocated blocks for new file: " + newFileBlocks);
 
-        disk.linkBlocks(newFileBlocks, "FileC");
+        FileSystem fs = new FileSystem(disk);
+        fs.createFile("FileC",4);
+        System.out.println("filesystem get File blocks " + fs.getFileBlocks("FileC"));
 
-
-        System.out.println("Block chain:");
-        for (int block : disk.blockChain.keySet()) {
+      disk.linkBlocks(newFileBlocks, "FileC");
+//
+//
+//
+//
+       System.out.println("Block chain:");
+       for (int block : disk.blockChain.keySet()) {
             System.out.println(block + " -> " + disk.blockChain.get(block));
-        }
+       }
+//
+//        // Check block ownership
+//        System.out.println("Block to file mapping:");
+//        for (int block : disk.blockToFile.keySet()) {
+//            System.out.println(block + " belongs to " + disk.blockToFile.get(block));
+//        }
+//
+//        //  Remaining free blocks
+//        System.out.println("Remaining free blocks: " + disk.freeBlocks);
 
-        // Check block ownership
-        System.out.println("Block to file mapping:");
-        for (int block : disk.blockToFile.keySet()) {
-            System.out.println(block + " belongs to " + disk.blockToFile.get(block));
-        }
 
-        //  Remaining free blocks
-        System.out.println("Remaining free blocks: " + disk.freeBlocks);
 
     }
 }
