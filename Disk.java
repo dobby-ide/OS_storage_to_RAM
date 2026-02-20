@@ -6,10 +6,10 @@ import java.util.*;
 //
 // */
 public class Disk {
-    private Set<Integer> freeBlocks;
+    public Set<Integer> freeBlocks;
     private int totalBlocks;
-    private Map<Integer, Integer> blockChain;
-    private Map<Integer, String> blockToFile;
+    public Map<Integer, Integer> blockChain;
+    public Map<Integer, String> blockToFile;
 
     public Disk(int totalBlocks, Map<String, List<Integer>> prefilledFiles) {
 
@@ -19,6 +19,7 @@ public class Disk {
             freeBlocks.add(i);
         }
         this.blockChain = new HashMap<>();
+        this.blockToFile = new HashMap<>();
 
         //pre-fill simulate fragmentation;
         if(prefilledFiles != null){
@@ -32,11 +33,9 @@ public class Disk {
 
                     blockChain.put(block, i < blocks.size() - 1 ? blocks.get(i + 1) : null);
 
-
+                    blockToFile.put(block, fileName);
 
                 }
-
-
             }
         }
     }
