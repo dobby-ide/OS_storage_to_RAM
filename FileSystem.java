@@ -14,7 +14,7 @@ public class FileSystem {
         }
 
         List<Integer> blocks = disk.allocateBlocks(size);
-        disk.linkBlocks(blocks);
+        disk.linkBlocks(blocks, name);
         return new File(name, size, blocks.get(0));
 
     }

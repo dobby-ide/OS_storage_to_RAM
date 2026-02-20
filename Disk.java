@@ -33,7 +33,7 @@ public class Disk {
                     blockChain.put(block, i < blocks.size() - 1 ? blocks.get(i + 1) : null);
 
 
-                    blockToFile.put(block, fileName);
+
                 }
 
 
@@ -41,8 +41,20 @@ public class Disk {
         }
     }
 
-    public void linkBlocks(List<Integer> blocks){
+    public void linkBlocks(List<Integer> blocks, String fileName){
+        if(blocks == null || blocks.isEmpty()) return;
         // creates the chain to disk
+
+
+        for (int i = 0; i < blocks.size(); i++){
+
+            int currentBlock = blocks.get(i);
+
+            Integer nextBlock = (i < blocks.size() -1) ? blocks.get(i + 1) : null;
+            blockChain.put(currentBlock, nextBlock);
+            blockToFile.put(currentBlock, fileName);
+        }
+
 
 
     }
