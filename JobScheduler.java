@@ -74,7 +74,27 @@ public class JobScheduler {
         }
     }
 
+    public List<Integer> getRunningJobIds() {
+        List<Integer> ids = new ArrayList<>();
+        for (Job j : runningJobs) ids.add(j.jobId);
+        return ids;
+    }
 
+    public List<Integer> getSleepingJobIds() {
+        List<Integer> ids = new ArrayList<>();
+        for (Job j : sleepingJobs) ids.add(j.jobId);
+        return ids;
+    }
+
+    public List<Integer> getFinishedJobIds() {
+        List<Integer> ids = new ArrayList<>();
+        for (Job j : finishedJobs) ids.add(j.jobId);
+        return ids;
+    }
+
+    public long getTickCounter() {
+        return tickCounter;
+    }
     public void printStatus() {
         System.out.println("Tick: " + tickCounter);
         System.out.println("Running jobs: " + runningJobs.stream().map(j -> j.jobId).toList());
