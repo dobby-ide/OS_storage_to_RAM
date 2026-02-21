@@ -4,8 +4,8 @@ public class Memory {
 
     private int totalSize;
     private boolean[] occupied;
-    private Map<Integer, Job> blockToJob;
-    private LinkedHashMap<Job, Long> usageTracker; // helper field that tracks the last time a job has been used in memory
+    private Map<Integer, Job> blockToJob;             // tracks which job occupies each frame
+    private LinkedHashMap<Job, Long> usageTracker;    // LRU tracking for jobs (last access tick)
 
     public Memory(int totalSize){
         this.totalSize = totalSize;
@@ -14,10 +14,9 @@ public class Memory {
         this.usageTracker = new LinkedHashMap<>();
     }
 
+    // ----------------- JOB METHODS -----------------
 
-    //
-    // Methods for jobs*/
-
+    // allocate memory for a job; returns true if successful
     public boolean allocate(Job job, long currentTick){
         int size = job.size;
         List<Integer> allocated = new ArrayList<>();
@@ -29,17 +28,18 @@ public class Memory {
                 blockToJob.put(i, job);
             }
         }
+
         if(allocated.size() != size){
-            // not enough memory for the job
-            free(allocated);
+            free(allocated);  // rollback
             return false;
         }
 
         job.allocateFrames(allocated);
-        usageTracker.put(job, currentTick);
+        touch(job, currentTick);  // update LRU
         return true;
     }
 
+    // deallocate memory for a job
     public void deallocate(Job job){
         for (int b: job.allocatedFrames){
             occupied[b] = false;
@@ -49,7 +49,14 @@ public class Memory {
         usageTracker.remove(job);
     }
 
-    //evict least recently used sleeping job
+    // update LRU timestamp
+    public void touch(Job job, long tick){
+        if(usageTracker.containsKey(job)){
+            usageTracker.put(job, tick);
+        }
+    }
+
+    // evict the least recently used sleeping job
     public Job evictLRU(){
         for(Map.Entry<Job, Long> entry : usageTracker.entrySet()){
             Job job = entry.getKey();
@@ -61,23 +68,16 @@ public class Memory {
         return null;
     }
 
-    //update LRU on access
-    public void touch(Job job, long tick){
-        if(usageTracker.containsKey(job)){
-            usageTracker.put(job, tick);
-        }
-    }
-
     public int getFreeBlocks(){
         int count = 0;
-        for (boolean b: occupied) if (!b) count++;
+        for (boolean b : occupied) if (!b) count++;
         return count;
     }
 
+    // ----------------- FILE METHODS -----------------
 
-    // METHODS FOR FILES
-
-    public List<Integer> allocate (int size) {
+    // simple allocation without eviction
+    public List<Integer> allocate(int size){
         List<Integer> allocated = new ArrayList<>();
         for (int i = 0; i < totalSize && allocated.size() < size; i++){
             if(!occupied[i]){
@@ -88,18 +88,30 @@ public class Memory {
         return allocated.size() == size ? allocated : null;
     }
 
-    // checks if memory has space for a file
+    // checks if memory has enough free space
     public boolean hasSpace(int size){
         int count = 0;
-        for (boolean b : occupied ){
-            if(!b) count++;
-        }
+        for (boolean b : occupied) if(!b) count++;
         return count >= size;
     }
 
+    // free a set of frames (used by files)
     public void free(List<Integer> blocks){
-        for (int b : blocks) occupied[b] = false;
+        for(int b : blocks) occupied[b] = false;
     }
 
+    // ----------------- FILE ALLOCATION WITH EVICTION -----------------
 
+    // allocate memory for a file; evict sleeping jobs if needed
+    public List<Integer> allocateWithEviction(int size){
+        List<Integer> allocated = allocate(size);
+
+        while(allocated == null){
+            Job evicted = evictLRU();
+            if(evicted == null) return null;  // nothing to evict, allocation fails
+            allocated = allocate(size);
+        }
+
+        return allocated;
+    }
 }
