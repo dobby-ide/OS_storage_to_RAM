@@ -1,7 +1,4 @@
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 //
 // to force the linked allocation a disk will be initialized with some scattered files in it*/
@@ -14,10 +11,39 @@ public class FileSystem {
         this.disk = disk;
         this.memory = memory;
         this.files = new HashMap<>();
+
+        // reconstructs files from disk logic
+        Map<String, List<Integer>> temp = new HashMap<>();
+        for (Map.Entry<Integer, String> entry : disk.blockToFile.entrySet()) {
+            int block = entry.getKey();
+            String fileName = entry.getValue();
+            temp.computeIfAbsent(fileName, k -> new ArrayList<>()).add(block);
+        }
+
+        for (Map.Entry<String, List<Integer>> entry : temp.entrySet()) {
+            String name = entry.getKey();
+            List<Integer> blocks = entry.getValue();
+
+            // find starting block (the one not pointed to by any other block)
+            Set<Integer> pointed = new HashSet<>(disk.blockChain.values());
+            Integer start = null;
+            for (Integer b : blocks) {
+                if (!pointed.contains(b)) {
+                    start = b;
+                    break;
+                }
+            }
+
+            // create File object
+            if (start != null) {
+                File file = new File(name, blocks.size(), start);
+                files.put(name, file);
+            }
+        }
     }
 
     // create a file: allocate disk blocks + memory
-    public File createFile(String name, int size){
+    public File createFile(String name, int size, long tickCounter){
         // check disk space
         if(!disk.hasFreeBlocks(size)){
             return null;
@@ -28,12 +54,14 @@ public class FileSystem {
         disk.linkBlocks(blocks, name);
 
         // allocate memory for the file, evict sleeping jobs if needed
-        List<Integer> memBlocks = memory.allocateWithEviction(size);
+        List<Integer> memBlocks = memory.allocateFileWithEviction(size, tickCounter);
         if(memBlocks == null){
             // memory allocation failed even after eviction
-            // optionally, roll back disk allocation
             return null;
         }
+
+        // assign memory blocks to file
+        memory.assignFileBlocks(name, memBlocks);
 
         // create file object
         File file = new File(name, size, blocks.get(0));

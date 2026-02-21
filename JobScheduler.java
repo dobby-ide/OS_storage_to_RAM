@@ -23,28 +23,22 @@ public class JobScheduler {
     public void tick() {
         tickCounter++;
 
-        // 1. Move NEW → RUNNING
+        // 1. Move NEW jobs → RUNNING if start time reached
         Iterator<Job> newIter = newJobs.iterator();
         while (newIter.hasNext()) {
             Job job = newIter.next();
 
             if (job.startTime <= tickCounter) {
-
-                boolean allocated = memory.allocate(job, tickCounter);
-
-                while (!allocated) {
-                    Job evicted = memory.evictLRU();
-                    if (evicted == null) break;
-
-                    sleepingJobs.remove(evicted);
-                    allocated = memory.allocate(job, tickCounter);
-                }
-
-                if (allocated) {
+                // try to allocate memory for the job, evicting sleeping jobs if needed
+                List<Integer> allocated = memory.allocateFileWithEviction(job.size, tickCounter);
+                if (allocated != null) {
+                    job.allocateFrames(allocated);
                     job.currentState = State.RUNNING;
                     runningJobs.add(job);
                     newIter.remove();
+                    memory.touch(job,tickCounter);
                 }
+                // if allocated is null, job stays in NEW and will try again in next tick
             }
         }
 
@@ -53,22 +47,20 @@ public class JobScheduler {
         while (runIter.hasNext()) {
             Job job = runIter.next();
 
+
             job.tick();
             memory.touch(job, tickCounter);
 
             if (job.isFinished()) {
-
                 if (job.finalState == State.END) {
                     job.currentState = State.END;
                     memory.deallocate(job);
                     finishedJobs.add(job);
-                }
-                else if (job.finalState == State.SLEEP) {
+                } else if (job.finalState == State.SLEEP) {
                     job.currentState = State.SLEEP;
-                    sleepingJobs.add(job);   // keep memory
-                    // DO NOT deallocate
+                    sleepingJobs.add(job);
+                    memory.touch(job, tickCounter);
                 }
-
                 runIter.remove();
             }
         }
